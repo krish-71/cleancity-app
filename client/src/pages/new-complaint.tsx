@@ -40,21 +40,39 @@ export default function NewComplaint() {
 
     setLoading(true);
 
-    // Simulate upload delay
-    setTimeout(() => {
-      addComplaint({
+    try {
+      let imageUrl = undefined;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("image", file);
+
+        const uploadRes = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!uploadRes.ok) throw new Error("Failed to upload image");
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.imageUrl;
+      }
+
+      await addComplaint({
         category: category as any,
         description,
-        imageUrl: file ? URL.createObjectURL(file) : undefined, // In real app, this would be S3 URL
-        location: {
-          lat: coords.lat,
-          lng: coords.lng,
-          address
-        }
+        imageUrl,
+        lat: coords.lat,
+        lng: coords.lng,
+        address
       });
-      setLoading(false);
+
+      toast({ title: "Success", description: "Complaint submitted successfully!" });
       setLocation("/dashboard");
-    }, 1500);
+    } catch (err: any) {
+      toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLocationSelect = (lat: number, lng: number) => {

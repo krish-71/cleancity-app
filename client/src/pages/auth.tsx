@@ -7,26 +7,56 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Leaf, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  
+  // Registration specific
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [role, setRole] = useState<"citizen" | "admin">("citizen");
+  
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useApp();
+  const { login, register, user } = useApp();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
-  // Parse query params for default tab (simple hack since wouter doesn't parse query params easily)
   const defaultTab = window.location.search.includes("register") ? "register" : "login";
+
+  // Redirect if already logged in
+  if (user) {
+    setLocation(user.role === "admin" ? "/admin" : "/dashboard");
+    return null;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate network request
-    setTimeout(() => {
-      login(email || "user@cleancity.com", role); // Default email for demo
-      setIsLoading(false);
-      setLocation(role === "admin" ? "/admin" : "/dashboard");
-    }, 1000);
+    try {
+      await login({ username, password });
+    } catch (err: any) {
+      toast({ title: "Login Failed", description: "Invalid username or password.", variant: "destructive" });
+    }
+    setIsLoading(false);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      await register({
+        username,
+        password,
+        name: `${firstName} ${lastName}`.trim(),
+        role
+      });
+    } catch (err: any) {
+      toast({ title: "Registration Failed", description: "Could not create account or username already exists.", variant: "destructive" });
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -51,31 +81,26 @@ export default function Auth() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Email/Username</Label>
                   <Input 
-                    id="email" 
-                    type="email" 
+                    id="username" 
+                    type="text" 
                     placeholder="user@example.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                   />
-                  <p className="text-xs text-muted-foreground">Demo: Leave empty for default user.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" placeholder="••••••••" required />
-                </div>
-                
-                <div className="flex items-center space-x-2 pt-2">
-                   <input 
-                      type="checkbox" 
-                      id="admin-check"
-                      className="rounded border-gray-300 text-primary focus:ring-primary"
-                      checked={role === "admin"}
-                      onChange={(e) => setRole(e.target.checked ? "admin" : "citizen")}
-                   />
-                   <Label htmlFor="admin-check" className="text-sm font-normal cursor-pointer">Log in as Admin</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required 
+                  />
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
@@ -86,24 +111,61 @@ export default function Auth() {
             </TabsContent>
             
             <TabsContent value="register">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first-name">First name</Label>
-                    <Input id="first-name" placeholder="John" required />
+                    <Input 
+                      id="first-name" 
+                      placeholder="John" 
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="last-name">Last name</Label>
-                    <Input id="last-name" placeholder="Doe" required />
+                    <Input 
+                      id="last-name" 
+                      placeholder="Doe" 
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required 
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="reg-email">Email</Label>
-                  <Input id="reg-email" type="email" placeholder="john@example.com" required />
+                  <Label htmlFor="reg-email">Email/Username</Label>
+                  <Input 
+                    id="reg-email" 
+                    type="text" 
+                    placeholder="john@example.com" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="reg-password">Password</Label>
-                  <Input id="reg-password" type="password" required />
+                  <Input 
+                    id="reg-password" 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Account Type</Label>
+                  <Select value={role} onValueChange={(val: any) => setRole(val)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select account type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="citizen">Citizen</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}

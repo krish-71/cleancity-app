@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 // Types
 export type User = {
   id: string;
-  email: string;
+  username: string;
   name: string;
   role: "citizen" | "admin";
 };
@@ -17,11 +17,9 @@ export type Complaint = {
   category: "organic" | "recyclable" | "hazardous" | "construction" | "other";
   description: string;
   imageUrl?: string;
-  location: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
+  lat: number;
+  lng: number;
+  address: string;
   status: ComplaintStatus;
   createdAt: string;
   updatedAt: string;
@@ -30,103 +28,95 @@ export type Complaint = {
 type AppState = {
   user: User | null;
   complaints: Complaint[];
-  login: (email: string, role: "citizen" | "admin") => void;
-  logout: () => void;
-  addComplaint: (complaint: Omit<Complaint, "id" | "userId" | "status" | "createdAt" | "updatedAt">) => void;
-  updateComplaintStatus: (id: string, status: ComplaintStatus) => void;
+  isLoading: boolean;
+  login: (data: any) => Promise<void>;
+  register: (data: any) => Promise<void>;
+  logout: () => Promise<void>;
+  addComplaint: (data: any) => Promise<void>;
+  updateComplaintStatus: (id: string, status: ComplaintStatus) => Promise<void>;
 };
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
-// Mock Data
-const MOCK_COMPLAINTS: Complaint[] = [
-  {
-    id: "1",
-    userId: "user-1",
-    category: "organic",
-    description: "Overflowing compost bin in the park.",
-    imageUrl: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b",
-    location: { lat: 40.7128, lng: -74.0060, address: "Central Park, NY" },
-    status: "pending",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "2",
-    userId: "user-2",
-    category: "hazardous",
-    description: "Batteries dumped on the sidewalk.",
-    imageUrl: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9",
-    location: { lat: 40.7282, lng: -73.9942, address: "5th Ave, NY" },
-    status: "in_progress",
-    createdAt: new Date(Date.now() - 172800000).toISOString(),
-    updatedAt: new Date(Date.now() - 100000).toISOString(),
-  },
-  {
-    id: "3",
-    userId: "user-1",
-    category: "recyclable",
-    description: "Plastic bottles scattered near the playground.",
-    imageUrl: "https://images.unsplash.com/photo-1605600659908-0ef719419d41",
-    location: { lat: 40.7589, lng: -73.9851, address: "Times Square, NY" },
-    status: "resolved",
-    createdAt: new Date(Date.now() - 400000000).toISOString(),
-    updatedAt: new Date(Date.now() - 1000000).toISOString(),
-  },
-];
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [complaints, setComplaints] = useState<Complaint[]>(MOCK_COMPLAINTS);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const login = (email: string, role: "citizen" | "admin") => {
-    setUser({
-      id: role === "admin" ? "admin-1" : "user-1",
-      email,
-      name: email.split("@")[0],
-      role,
+  useEffect(() => {
+    fetch("/api/user")
+      .then(res => res.ok ? res.json() : null)
+      .then(setUser)
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetch("/api/complaints")
+        .then(res => res.ok ? res.json() : [])
+        .then(setComplaints);
+    } else {
+      setComplaints([]);
+    }
+  }, [user]);
+
+  const login = async (data: any) => {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
-    toast({
-      title: `Welcome back, ${email.split("@")[0]}!`,
-      description: "You have successfully logged in.",
-    });
+    if (!res.ok) throw new Error("Login failed");
+    const u = await res.json();
+    setUser(u);
+    toast({ title: `Welcome back, ${u.name}!`, description: "You have successfully logged in." });
   };
 
-  const logout = () => {
+  const register = async (data: any) => {
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Registration failed");
+    const u = await res.json();
+    setUser(u);
+    toast({ title: `Welcome to CleanCity, ${u.name}!`, description: "Your account has been created." });
+  };
+
+  const logout = async () => {
+    await fetch("/api/logout", { method: "POST" });
     setUser(null);
-    toast({
-      title: "Logged out",
-      description: "See you next time!",
-    });
+    toast({ title: "Logged out", description: "See you next time!" });
   };
 
-  const addComplaint = (data: Omit<Complaint, "id" | "userId" | "status" | "createdAt" | "updatedAt">) => {
-    const newComplaint: Complaint = {
-      ...data,
-      id: Math.random().toString(36).substr(2, 9),
-      userId: user?.id || "anonymous",
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  const addComplaint = async (data: any) => {
+    const res = await fetch("/api/complaints", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to submit");
+    const newComplaint = await res.json();
     setComplaints([newComplaint, ...complaints]);
-    toast({
-      title: "Complaint Submitted",
-      description: "We have received your report and will act on it soon.",
-    });
+    toast({ title: "Complaint Submitted", description: "We have received your report." });
   };
 
-  const updateComplaintStatus = (id: string, status: ComplaintStatus) => {
-    setComplaints(complaints.map(c => c.id === id ? { ...c, status, updatedAt: new Date().toISOString() } : c));
-    toast({
-      title: "Status Updated",
-      description: `Complaint #${id} marked as ${status.replace("_", " ")}.`,
+  const updateComplaintStatus = async (id: string, status: ComplaintStatus) => {
+    const res = await fetch(`/api/complaints/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
     });
+    if (!res.ok) throw new Error("Failed to update status");
+    const updated = await res.json();
+    setComplaints(complaints.map(c => c.id === id ? updated : c));
+    toast({ title: "Status Updated", description: "Complaint status updated." });
   };
 
   return (
-    <AppContext.Provider value={{ user, complaints, login, logout, addComplaint, updateComplaintStatus }}>
+    <AppContext.Provider value={{ user, complaints, isLoading, login, register, logout, addComplaint, updateComplaintStatus }}>
       {children}
     </AppContext.Provider>
   );

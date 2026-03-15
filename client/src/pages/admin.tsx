@@ -24,8 +24,8 @@ export default function AdminDashboard() {
 
   const mapMarkers = complaints.map(c => ({
     id: c.id,
-    lat: c.location.lat,
-    lng: c.location.lng,
+    lat: c.lat,
+    lng: c.lng,
     title: c.category
   }));
 

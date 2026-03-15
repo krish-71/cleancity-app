@@ -1,38 +1,72 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { users, complaints, type User, type InsertUser, type Complaint, type InsertComplaint } from "../shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import session from "express-session";
+import connectSqlite3 from "connect-sqlite3";
 
-// modify the interface with any CRUD methods
-// you might need
+const SQLiteStore = connectSqlite3(session);
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  createComplaint(complaint: InsertComplaint & { userId: number }): Promise<Complaint>;
+  getComplaints(): Promise<Complaint[]>;
+  getComplaintsByUserId(userId: number): Promise<Complaint[]>;
+  updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined>;
+  sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
+    this.sessionStore = new SQLiteStore({
+      dir: '.',
+      db: 'sessions.sqlite'
+    }) as unknown as session.Store;
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+
+  async createComplaint(insertComplaint: InsertComplaint & { userId: number }): Promise<Complaint> {
+    const [complaint] = await db.insert(complaints).values({
+      ...insertComplaint,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }).returning();
+    return complaint;
+  }
+
+  async getComplaints(): Promise<Complaint[]> {
+    return await db.select().from(complaints);
+  }
+
+  async getComplaintsByUserId(userId: number): Promise<Complaint[]> {
+    return await db.select().from(complaints).where(eq(complaints.userId, userId));
+  }
+
+  async updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined> {
+    const [complaint] = await db
+      .update(complaints)
+      .set({ status: status as any, updatedAt: new Date() })
+      .where(eq(complaints.id, id))
+      .returning();
+    return complaint;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

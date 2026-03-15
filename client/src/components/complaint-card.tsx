@@ -69,7 +69,7 @@ export function ComplaintCard({ complaint, isAdmin = false }: { complaint: Compl
       <CardContent className="p-4 pt-0">
         <div className="flex items-center text-sm text-muted-foreground mt-2">
           <MapPin className="w-4 h-4 mr-1 text-primary shrink-0" />
-          <span className="truncate">{complaint.location.address}</span>
+          <span className="truncate">{complaint.address}</span>
         </div>
       </CardContent>
 
