@@ -6,7 +6,7 @@ export type User = {
   id: string;
   username: string;
   name: string;
-  role: "citizen" | "admin";
+  role: "citizen" | "admin" | "pending_admin";
 };
 
 export type ComplaintStatus = "pending" | "in_progress" | "resolved" | "rejected";

@@ -163,7 +163,7 @@ export default function Auth() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="citizen">Citizen</SelectItem>
-                      <SelectItem value="admin">Administrator</SelectItem>
+                      <SelectItem value="admin">Administrator (Requires Approval)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

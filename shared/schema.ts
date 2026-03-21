@@ -7,7 +7,7 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   username: text("username").notNull().unique(), // We'll use this for email
   password: text("password").notNull(),
-  role: text("role", { enum: ["citizen", "admin"] }).default("citizen").notNull(),
+  role: text("role", { enum: ["citizen", "admin", "pending_admin"] }).default("citizen").notNull(),
 });
 
 export const complaints = sqliteTable("complaints", {

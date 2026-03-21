@@ -76,5 +76,20 @@ export async function registerRoutes(
     res.json(complaint);
   });
 
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") return res.sendStatus(403);
+    const role = (req.query.role as string) || "pending_admin";
+    const users = await storage.getUsersByRole(role);
+    res.json(users);
+  });
+
+  app.patch("/api/admin/users/:id/role", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") return res.sendStatus(403);
+    const { role } = req.body;
+    const user = await storage.updateUserRole(parseInt(req.params.id), role);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+  });
+
   return httpServer;
 }

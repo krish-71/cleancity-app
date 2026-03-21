@@ -14,6 +14,9 @@ export interface IStorage {
   getComplaints(): Promise<Complaint[]>;
   getComplaintsByUserId(userId: number): Promise<Complaint[]>;
   updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined>;
+  getAdmins(): Promise<User[]>;
+  getUsersByRole(role: string): Promise<User[]>;
+  updateUserRole(id: number, role: "citizen" | "admin" | "pending_admin"): Promise<User | undefined>;
   sessionStore: session.Store;
 }
 
@@ -66,6 +69,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(complaints.id, id))
       .returning();
     return complaint;
+  }
+
+  async getAdmins(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, "admin"));
+  }
+
+  async getUsersByRole(role: string): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, role as any));
+  }
+
+  async updateUserRole(id: number, role: "citizen" | "admin" | "pending_admin"): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 }
 

@@ -2,7 +2,8 @@ import { useApp } from "@/lib/store";
 import { ComplaintCard } from "@/components/complaint-card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Plus } from "lucide-react";
+import { Plus, Clock } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const { user, complaints } = useApp();
@@ -31,6 +32,16 @@ export default function Dashboard() {
           </Button>
         </Link>
       </div>
+
+      {user.role === "pending_admin" && (
+        <Alert className="mb-8 border-primary/20 bg-primary/5">
+          <Clock className="h-4 w-4 text-primary" />
+          <AlertTitle>Admin Approval Pending</AlertTitle>
+          <AlertDescription>
+            Your request for administrator access is being reviewed. Until approved, you can continue using the portal as a citizen.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {myComplaints.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed border-muted rounded-xl bg-muted/10">
